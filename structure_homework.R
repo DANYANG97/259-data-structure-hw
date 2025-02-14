@@ -39,7 +39,8 @@ load("rs_data.RData")
 
 #ANSWER
 
-
+rs_joined_orig <- full_join(rs_new, rs_old, by = c("Artist", "Song"))
+nrow(rs_joined_orig)
 
 ### Question 2 ---------- 
 
@@ -50,7 +51,13 @@ load("rs_data.RData")
 # Make Rank and Year into integer variables for rs_old before binding them into rs_all
 
 #ANSWER
-
+rs_old <- rs_old %>%
+  mutate(Source = "Old",
+         Rank = as.integer(Rank),
+         Year = as.integer(Year))
+rs_new <- rs_new %>%
+  mutate(Source = "New")
+rs_all <- bind_rows(rs_new, rs_old)
 
 ### Question 3 ----------
 
@@ -62,7 +69,18 @@ load("rs_data.RData")
 # Use both functions to make all artists/song lowercase and remove any extra spaces
 
 #ANSWER
-
+rs_all <- rs_all %>%
+  mutate(Artist = str_remove_all(Artist, "The"),
+         Artist = str_replace_all(Artist, "&", "and"),
+         Artist = str_remove_all(Artist, "[:punct:]"),
+         Artist = str_to_lower(Artist),
+         Artist = str_trim(Artist))
+rs_all <- rs_all %>%
+  mutate(Song = str_remove_all(Song, "The"),
+         Song = str_replace_all(Song, "&", "and"),
+         Song = str_remove_all(Song, "[:punct:]"),
+         Song = str_to_lower(Song),
+         Song = str_trim(Song))         
 
 ### Question 4 ----------
 
@@ -75,7 +93,15 @@ load("rs_data.RData")
 # in the new rs_joined compared to the original. Use nrow to check (there should be 799 rows)
 
 #ANSWER
+old_clean <- rs_all %>% filter(Source == "Old")
+new_clean <- rs_all %>% filter(Source == "New")
 
+rs_joined <- full_join(
+  old_clean,
+  new_clean,
+  by = c("Artist", "Song"),
+  suffix = c("_Old", "_New"))
+nrow(rs_joined)
 
 ### Question 5 ----------
 
@@ -88,7 +114,11 @@ load("rs_data.RData")
 # You should now be able to see how each song moved up/down in rankings between the two lists
 
 #ANSWER
-
+rs_joined <- rs_joined %>%
+  select(-Source_Old, -Source_New) %>% 
+  filter(!is.na(Rank_New), !is.na(Rank_Old)) %>%  
+  mutate(Rank_Change = Rank_Old - Rank_New) %>%
+  arrange(Rank_Change) 
 
 ### Question 6 ----------
 
@@ -120,7 +150,9 @@ load("rs_data.RData")
 # Use parse_date_time to fix it
 
 #ANSWER
-
+top20 <- read_csv("top_20.csv")
+top20 <- top20 %>%
+  mutate(Release_Date = parse_date_time(Release_Date, orders = c("mdy", "ymd", "dmy")))
 
 ### Question 9 --------
 
@@ -129,7 +161,10 @@ load("rs_data.RData")
 # overwrite top20 with the pivoted data (there should now be 20 rows!)
 
 #ANSWER
-
+top20 <- top20 %>%
+  pivot_wider(
+    names_from  = Style, 
+    values_from = Value)
 
 
 ### Question 10 ---------
@@ -154,6 +189,8 @@ load("rs_data.RData")
 # Figure out which is the top-ranked song (from Rank_New) that used a minor key
 
 #ANSWER
-
+top20 <- top20 %>%
+  mutate(Quality = if_else(str_detect(Key, "m"), "Minor", "Major"))
+top20 %>% filter(Quality == "Minor") %>% slice_min(Rank_New)
 
 
